@@ -1,37 +1,35 @@
-class GameRule{
-	private constructor(){
-		this.InitOnFile();
-	}
-
-	private static m_Instance : GameRule = null!;
-
-	public static GetInstance(): GameRule{
-		if(!this.m_Instance){
-			this.m_Instance = new GameRule();
+namespace Singleton {
+	class GameRule{
+		private constructor(){
+			this.initOnFile();
 		}
-		return this.m_Instance;
-	}
 
-	public InitOnFile():void{
+		private static m_Instance : GameRule = null!;
 
-	}
+		public static getInstance(): GameRule{
+			if(!this.m_Instance){
+				this.m_Instance = new GameRule();
+			}
+			return this.m_Instance;
+		}
 
-	public SetPlayerName(_name:string) :void{
-		this.playerName = _name;
-	}
+		public initOnFile():void{
 
-	public GetPlayerName():string{
-		return this.playerName;
-	}
+		}
 
-	public SetPlayerLevel(_level:number):void{
-		this.playerLevel = _level;
-	}
+		set setPlayerName(_name:string)
+			{this.m_playerName = _name;}
 
-	public GetPlayerLevel():number{
-		return this.playerLevel;
-	}
-	
-	private playerName:string = "";
-	private playerLevel:number = 0;
+		get getPlayerName():string
+			{return this.m_playerName;}
+
+		set setPlayerLevel(_level:number)
+			{this.m_playerLevel = _level;}
+
+		get getPlayerLevel():number
+			{return this.m_playerLevel;}
+		
+		private m_playerName:string;
+		private m_playerLevel:number;
+	};
 };
