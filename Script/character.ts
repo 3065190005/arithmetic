@@ -7,6 +7,9 @@ import gM = require("./GameManager");
 export class Character extends cc.Component {
 	
 	onLoad():void{
+		cc.director.getPhysicsManager().enabled = true;
+		cc.director.getCollisionManager().enabled = true;
+
 		this.m_animeB = "null";
 		this.m_animeA = "Idle";
 
@@ -67,6 +70,9 @@ export class Character extends cc.Component {
 
 	// 行为动作
 	[m_actVec:string]:string;
+
+	// 输入按键
+	m_Inputkey:number[];
 
 	// 行为树
 	public StateTree():void{
