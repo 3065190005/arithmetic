@@ -10,10 +10,16 @@ export class Character extends cc.Component {
 		this.m_animeB = "null";
 		this.m_animeA = "Idle";
 
-		cc.Node bodyBox = this.parent.bodyBox.node;
-		cc.Node AttBox = this.parent.attackBox.node;
-		this.m_BodyBox = bodyBox?.getComponents(cc.BoxCollider);
-		this.m_AttBox = AttBox?.getComponents(cc.BoxCollider);
+		this.m_actVec["Idle"]="Idle";
+		this.m_actVec["Move"]="Move";
+		this.m_actVec["Attack"]="Attack";
+		this.m_actVec["Hurt"]="Hurt";
+		this.m_actVec["Dead"]="Dead";
+
+		let bodyBox:cc.Node = this.parent.bodyBox.node;
+		let attBox:cc.Node = this.parent.attackBox.node;
+		this.m_bodyBox = bodyBox?.getComponents(cc.BoxCollider);
+		this.m_attBox = attBox?.getComponents(cc.BoxCollider);
 
 		this.m_animation = cc.getComponent(cc.Animation);
 
@@ -56,47 +62,50 @@ export class Character extends cc.Component {
 	m_animation:cc.Animation;
 
 	// 碰撞体组件
-	m_BodyBox:cc.BoxCollider[];
-	m_AttBox:cc.BoxCollider[];
+	m_bodyBox:cc.BoxCollider[];
+	m_attBox:cc.BoxCollider[];
+
+	// 行为动作
+	[m_actVec:string]:string;
 
 	// 行为树
 	public StateTree():void{
 		
 	}
 
-	public onIdle():boolean{
-		if(!this.onChangeStatus("Idle"))
+	public onIdle(change:boolean = false):boolean{
+		if(!this.onChangeStatus("Idle",change))
 			return false;
 		
-		this.m_animation.play("Idle");
+		this.m_animation.play(this.m_actVec["Idle"]);
 	}
 
-	public onMove():boolean{
+	public onMove(change:boolean = false):boolean{
 
 		return false;
 	}
 
-	public onJump():boolean{
+	public onJump(change:boolean = false):boolean{
 
 		return false;
 	}
 
-	public onAttack():boolean{
+	public onAttack(change:boolean = false):boolean{
 
 		return false;
 	}	
 
-	public onHurt():boolean{
+	public onHurt(change:boolean = false):boolean{
 
 		return false;
 	}
 
-	public onDead():boolean{
+	public onDead(change:boolean = false):boolean{
 		return false;
 	}
 
-	private onChangeStatus(action:string):boolean{
-		if(this.m_animeA == this.m_animeB){
+	private onChangeStatus(action:string,change:Boolean):boolean{
+		if(this.m_animeA == this.m_animeB && change == false){
 			return false;
 		}
 
@@ -106,11 +115,17 @@ export class Character extends cc.Component {
 		return true;
 	}
 
-	public AttBoxUpdate(id:number,x:number,y:number,w:number,h:number):void{
-
+	public AttBoxAniCallBack(id:number,x:number,y:number,w:number,h:number):void{
+		let boffset:cc.Vec2 = cc.v2(x,y);
+		let bsize:cc.Size = cc.size(w,h);
+		this.m_attBox[id]?.offset = boffset;
+		this.m_attBox[id]?.size = bsize;
 	}
 
-	public ClyBoxUpdate(id:number,x:number,y:number,w:number,h:number):void{
-		
+	public ColiBoxAniCallBack(id:number,x:number,y:number,w:number,h:number):void{
+		let boffset:cc.Vec2 = cc.v2(x,y);
+		let bsize:cc.Size = cc.size(w,h);
+		this.m_bodyBox[id]?.offset = boffset;
+		this.m_bodyBox[id]?.size = bsize;
 	}
 };
