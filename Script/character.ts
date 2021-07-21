@@ -18,6 +18,7 @@ export class Character extends cc.Component {
 
 		this.m_animeB = "null";
 		this.m_animeA = "Idle";
+		this.m_playAnime = "null";
 
 		this.m_actVec["Idle"]="Idle";
 		this.m_actVec["Move"]="Move";
@@ -43,7 +44,7 @@ export class Character extends cc.Component {
 		let stat:dF.CUSDefine.State;
 		stat = this.StateTree();
 		this.UpdateMotion(stat);
-		this.m_animation.play(this.m_animeA);
+		this.m_animation.play(this.m_playAnime);
 	}
 
 	@property({displayName:"BaseHeaNum"})
@@ -86,6 +87,7 @@ export class Character extends cc.Component {
 	// 当前和上一个动画暂存
 	m_animeA:string;
 	m_animeB:string;
+	m_playAnime:string;
 
 	// 刚体
 	m_rigidBody:cc.RigidBody;
@@ -187,7 +189,7 @@ export class Character extends cc.Component {
 		if(!this.onChangeStatus("Idle",change))
 			return false;
 		
-		this.m_animeA = this.m_actVec["Idle"];
+		this.m_playAnime = this.m_actVec["Idle"];
 	}
 
 	public onMove(change:boolean = false):boolean{
@@ -203,15 +205,18 @@ export class Character extends cc.Component {
 	public onAttack(change:boolean = false):boolean{
 		if(!this.m_canBeHurt)
 			return false;
-		return false;
+		return true;
 	}	
 
 	public onHurt(event:dF.CUSDefine.AttEvent,change:boolean = false):boolean{
-		if(!this.m_canBeHurt)
+		if(!this.m_canBeHurt || !this.onChangeStatus("Hurt",change))
 			return false;
-		
+
 		event.hitNode = this.node;
-		return false;
+		let GameInstn:gM.Global.GameRule = gM.Global.GameRule.getInstance();
+		GameInstn.nodeSTCallBack(event);
+		this.m_playAnime = this.m_actVec["Hurt"];
+		return true;
 	}
 
 	public onDead(change:boolean = false):boolean{
@@ -253,8 +258,8 @@ export class Character extends cc.Component {
 			hitNode:null,
 			damage:this.getDamage(),
 			hitback:cc.vec2(0,0),
-			hitLev:this.m_hitLevel;
-		}
+			hitLev:this.m_hitLevel
+		};
 
 		let target:cc.Node = other.node.parent.getChildByName("body");
 		target.getComponent("Character").onHurt(event);

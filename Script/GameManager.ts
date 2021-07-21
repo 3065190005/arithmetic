@@ -1,3 +1,5 @@
+import dF = require("./TypeDefine"); 
+
 export namespace Global {
 
 	// 游戏管理类
@@ -22,6 +24,10 @@ export namespace Global {
 			let data:ConfigManager = new ConfigManager(playerData);
 			let table:ConfigTable = data.getTable("Character");
 			this.m_playerLevel = table.getColumn("level").asNumber();
+		}
+
+		public nodeSTCallBack(event:dF.CUSDefine.AttEvent){
+			
 		}
 
 		set setPlayerName(_name:string)
