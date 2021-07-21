@@ -25,11 +25,12 @@ export class Character extends cc.Component {
 		this.m_actVec["Hurt"]="Hurt";
 		this.m_actVec["Dead"]="Dead";
 
-		let bodyBox:cc.Node = this.parent.bodyBox.node;
+		let hitBox:cc.Node = this.parent.hitBox.node;
 		let attBox:cc.Node = this.parent.attackBox.node;
-		this.m_bodyBox = bodyBox?.getComponents(cc.BoxCollider);
-		this.m_attBox = attBox?.getComponents(cc.BoxCollider);
 
+		this.m_hitBox = hitBox?.getComponents(cc.BoxCollider);
+		this.m_attBox = attBox?.getComponents(cc.BoxCollider);
+		this.m_rigidBody = this.parent.getComponent(cc.RidigBody);
 		this.m_animation = cc.getComponent(cc.Animation);
 
 		this.m_status = dF.CUSDefine.State.None;
@@ -86,6 +87,9 @@ export class Character extends cc.Component {
 	m_animeA:string;
 	m_animeB:string;
 
+	// 刚体
+	m_rigidBody:cc.RigidBody;
+
 	// 当前状态
 	m_status:dF.CUSDefine.State;
 
@@ -93,7 +97,7 @@ export class Character extends cc.Component {
 	m_animation:cc.Animation;
 
 	// 碰撞体组件
-	m_bodyBox:cc.BoxCollider[];
+	m_hitBox:cc.BoxCollider[];
 	m_attBox:cc.BoxCollider[];
 
 	// 行为动作
@@ -239,8 +243,8 @@ export class Character extends cc.Component {
 	public ColiBoxAniCallBack(id:number,x:number,y:number,w:number,h:number):void{
 		let boffset:cc.Vec2 = cc.v2(x,y);
 		let bsize:cc.Size = cc.size(w,h);
-		this.m_bodyBox[id]?.offset = boffset;
-		this.m_bodyBox[id]?.size = bsize;
+		this.m_hitBox[id]?.offset = boffset;
+		this.m_hitBox[id]?.size = bsize;
 	}
 
 	onCollisionEnter(other:cc.BoxCollider, self:cc.BoxCollider):void{
