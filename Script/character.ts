@@ -30,7 +30,7 @@ export class Character extends cc.Component {
 
 		this.m_hitBox = hitBox?.getComponents(cc.BoxCollider);
 		this.m_attBox = attBox?.getComponents(cc.BoxCollider);
-		this.m_rigidBody = this.parent.getComponent(cc.RidigBody);
+		this.m_rigidBody = this.parent.getComponent(cc.RigidBody);
 		this.m_animation = cc.getComponent(cc.Animation);
 
 		this.m_status = dF.CUSDefine.State.None;
