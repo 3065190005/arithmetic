@@ -1,4 +1,6 @@
 export namespace Global {
+
+	// 游戏管理类
 	export class GameRule{
 		private constructor(){
 			this.initOnFile();
@@ -14,7 +16,12 @@ export namespace Global {
 		}
 
 		public initOnFile():void{
+			let playerData:string;
+			// playerData read
 
+			let data:ConfigManager = new ConfigManager(playerData);
+			let table:ConfigTable = data.getTable("Character");
+			this.m_playerLevel = table.getColumn("level").asNumber();
 		}
 
 		set setPlayerName(_name:string)
@@ -29,23 +36,62 @@ export namespace Global {
 		get getPlayerLevel():number
 			{return this.m_playerLevel;}
 		
-		private m_playerName:string;
-		private m_playerLevel:number;
+		private m_playerName:string;	// 玩家名字
+		private m_playerLevel:number;	// 玩家等级
+		private m_frame:number;			// 游戏帧率
 	};
 
 	export class ConfigColumn{
 		constructor(str:string){
-			
+			this.m_regTest = new RegExp(/(^\s[a-zA-Z_][a-zA-Z0-9_]*\s*)=(.+)/m);
+			let value = this.m_regTest.exec(str);
+			this.m_name = value[1];
+			this.m_value = value[2];
+
+			this.replaceSpace();
 		}
 
 		set setName(name:string)
-			{this.name = name;}
+			{this.m_name = name;}
 
 		get getName():string
-			{return this.name;}
+			{return this.m_name;}
 
-		private name:string;
-		private value:any;
+		asString():string{
+			return this.m_value;
+		}
+
+		asNumber():number{
+			return Number(this.m_value);
+		}
+
+		asArrayStr(plist:string = ','):string[]{
+			let result:string[];
+			result = this.m_value.split(plist);
+			return result;
+		}
+
+		asArrayNum(plist:string = ','):number[]{
+			let result:number[];
+			let temp:string[];
+			temp = this.m_value.split(plist);
+			temp.forEach((str:string)=>{
+				let num:number = Number(str);
+				if(num != NaN){
+					result.push(num);
+				}
+			});
+			return result;
+		}
+
+		private replaceSpace():void{
+			this.m_name.replace(/(^\s*)|(\s*$)/g,"");
+			this.m_value.replace(/(^\s*)|(\s*$)/g,"");
+		}
+
+		private m_regTest:RegExp;
+		private m_name:string;
+		private m_value:string;
 	}
 
 	export class ConfigTable{
@@ -53,8 +99,12 @@ export namespace Global {
 			file = file.replace('\r','\n');
 			file = file.replace('\n\n','\n');
 
-			let strArray = file.split('\n');
+			let strArray:string[] = file.split('\n');
 			strArray.forEach((str:string)=>{
+				if(!this.m_regTest.test(str)){
+					return;
+				}
+
 				let column:ConfigColumn = new ConfigColumn(str);
 				this.m_tableList.set(column.getName,column);
 			});
@@ -75,6 +125,7 @@ export namespace Global {
 			{return this.m_tabname;}
 		
 
+		private m_regTest:RegExp = new RegExp(/(^\s[a-zA-Z_][a-zA-Z0-9_]*\s*)=(.+)/m);
 		private m_tabname:string;
 		private m_tableList:Map<string,ConfigColumn>;
 	};
@@ -87,6 +138,11 @@ export namespace Global {
 	export class ConfigManager{
 		constructor(file:string){
 			// read all file
+			this.getTablesFromFile(file);
+		}
+
+		getTablesFromFile(file:string):void{
+			this.m_file.clear();
 
 			let spe:RegExp = new RegExp(/\/\/(.+?)/g);
 			file = file.replace(spe, '\n');
@@ -128,13 +184,13 @@ export namespace Global {
 				}
 				
 				let tabClas:ConfigTable = new ConfigTable(tabText);
-				tabClas.setTabName =offsetVec[i].name;
+				tabClas.setTabName = offsetVec[i].name;
 
 				this.m_file.set(offsetVec[i].name,tabClas);
 			}
 		}
 
-		readTable(tableName:string):ConfigTable {
+		getTable(tableName:string):ConfigTable {
 			if(this.m_file.get(tableName) != null){
 				return this.m_file.get(tableName);
 			}

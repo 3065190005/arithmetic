@@ -8,6 +8,14 @@ export namespace CUSDefine {
 		Dead,
 	};
 
+	export interface AttEvent{
+		attNode:any,
+		hitNode:any,
+		damage:number,
+		hitback:any,
+		hitLev:number
+	};
+
 	export let StatusVec:Map<string,State> = new Map([
 		["None",State.None],
 		["Idle",State.Idle],

@@ -10,6 +10,12 @@ export class Character extends cc.Component {
 		cc.director.getPhysicsManager().enabled = true;
 		cc.director.getCollisionManager().enabled = true;
 
+		this.m_isJumped = false;
+		this.m_isAttack = false;
+		this.m_canBeHurt = true;
+
+		this.m_direction = cc.vec2(0,0);
+
 		this.m_animeB = "null";
 		this.m_animeA = "Idle";
 
@@ -32,27 +38,49 @@ export class Character extends cc.Component {
 	}
 
 	update(dt:number):void{
-		
+		this.KeyPress();
+		let stat:dF.CUSDefine.State;
+		stat = this.StateTree();
+		this.UpdateMotion(stat);
+		this.m_animation.play(this.m_animeA);
 	}
 
 	@property({displayName:"BaseHeaNum"})
-	m_baseHeaNum:number = 5;
-	m_offsetHeaNum:number = 0;
-
-	@property({displayName:"BaseSepNum"})
-	m_baseSepNum:number = 50;
-	m_offsetSepNum:number = 0;
+	m_baseHeaNum:number = 5;		// 基础血量
+	m_effsetHeaNum:number = 0;		// 增值率
+	m_offsetHeaNum:number = 1;		// 额外血量
+	m_heaNum:number = 5;			// 当前血量
 
 	@property({displayName:"BaseAttNum"})
 	m_baseAttNum:number = 1;
-	m_offsetAttNum:number = 0;
+	m_effsetAttNum:number = 0;
+	m_offsetAttNum:number = 1;
 
-	@property({displayName:"CharaterLevel"})
+	@property({displayName:"BaseSepNum"})
+	m_baseSepNum:number = 50;
+	m_offsetSepNum:number = 1;
+
+	@property({displayName:"BaseJumpNum"})
 	m_baseJumpHeight:number = 15;
-	m_offsetHeaNum:number = 0;
+	m_offsetJumpHeight:number = 0;
 
 	@property({displayName:"CharaterLevel"})
-	m_baseLevel:number = 1;
+	m_Level:number = 1;
+
+	// 位置方向
+	m_direction:cc.Vec2;
+
+	// 是否按下攻击
+	m_isAttack:boolean;
+
+	// 是否正在跳跃
+	m_isJumped:boolean;
+
+	// 是否可以收到伤害
+	m_canBeHurt:boolean;
+
+	// 打击感等级
+	m_hitLevel:number;
 
 	// 当前和上一个动画暂存
 	m_animeA:string;
@@ -74,16 +102,88 @@ export class Character extends cc.Component {
 	// 输入按键
 	m_Inputkey:number[];
 
+	// 额外伤害 + (基础伤害+(等级*增值率))
+	getDamage():number{
+		return this.m_effsetAttNum + (this.m_baseAttNum + (this.m_Level*this.m_offsetAttNum));
+	}
+
+	getMaxHeath():number{
+		return (this.m_effsetHeaNum + (this.m_baseHeaNum +(this.m_Level * this.m_offsetHeaNum)));
+	}
+
+	getHeath():number{
+		return this.m_heaNum;
+	}
+
+	getSpeed():number{
+		return this.m_baseSepNum + this.m_offsetSepNum;
+	}
+
 	// 行为树
-	public StateTree():void{
+	public StateTree():dF.CUSDefine.State{
+		let stat:dF.CUSDefine.State;
+
+		stat = dF.CUSDefine.State.None;
 		
+		if(this.m_isAttack){
+			stat = dF.CUSDefine.State.Attack;
+		}else if(this.m_direction != cc.vec2(0,0)){
+			stat = dF.CUSDefine.State.Move;
+		}else{
+			stat = dF.CUSDefine.State.Idle;
+		}
+
+		if(stat <= this.m_status){
+			return dF.CUSDefine.State.None;
+		}
+
+		return stat;
+	}
+
+	// 行为执行
+	public UpdateMotion(stat:dF.CUSDefine.State):void{
+		switch(stat){
+			case dF.CUSDefine.State.Idle:
+				this.onIdle();
+				break;
+			case dF.CUSDefine.State.Move:
+				this.onMove();
+				break;
+			case dF.CUSDefine.State.Attack:
+				this.onAttack();
+				break;
+			case dF.CUSDefine.State.Hurt:
+				this.onHurt();
+				break;
+			case dF.CUSDefine.State.Dead:
+				this.onDead();
+				break;
+			default:
+				break;
+		}
+	}
+
+	// 按键设置
+	public KeyPress():void{
+		let moveR:number = this.m_Inputkey[cc.marco.KEY.d];
+		let moveL:number = this.m_Inputkey[cc.marco.KEY.a];
+		let moveU:number = this.m_Inputkey[cc.marco.KEY.w];
+		let att:number = this.m_Inputkey[cc.marco.KEY.j];
+
+		this.m_direction = cc.vec(0,0);
+		if(moveR){this.m_direction.x++;}
+		if(moveL){this.m_direction.x--;}
+		if(moveU){this.m_direction.y = moveU;}
+
+		if(att){this.m_isAttack = true;}
+		else {this.m_isAttack = false;}
 	}
 
 	public onIdle(change:boolean = false):boolean{
 		if(!this.onChangeStatus("Idle",change))
 			return false;
 		
-		this.m_animation.play(this.m_actVec["Idle"]);
+		this.m_animeA = this.m_actVec["Idle"];
 	}
 
 	public onMove(change:boolean = false):boolean{
@@ -97,12 +197,16 @@ export class Character extends cc.Component {
 	}
 
 	public onAttack(change:boolean = false):boolean{
-
+		if(!this.m_canBeHurt)
+			return false;
 		return false;
 	}	
 
-	public onHurt(change:boolean = false):boolean{
-
+	public onHurt(event:dF.CUSDefine.AttEvent,change:boolean = false):boolean{
+		if(!this.m_canBeHurt)
+			return false;
+		
+		event.hitNode = this.node;
 		return false;
 	}
 
@@ -111,6 +215,10 @@ export class Character extends cc.Component {
 	}
 
 	private onChangeStatus(action:string,change:Boolean):boolean{
+		if(action == "null"){
+			return false;
+		}
+
 		if(this.m_animeA == this.m_animeB && change == false){
 			return false;
 		}
@@ -133,5 +241,26 @@ export class Character extends cc.Component {
 		let bsize:cc.Size = cc.size(w,h);
 		this.m_bodyBox[id]?.offset = boffset;
 		this.m_bodyBox[id]?.size = bsize;
+	}
+
+	onCollisionEnter(other:cc.BoxCollider, self:cc.BoxCollider):void{
+		let event:dF.CUSDefine.AttEvent = {
+			attNode:this.node,
+			hitNode:null,
+			damage:this.getDamage(),
+			hitback:cc.vec2(0,0),
+			hitLev:this.m_hitLevel;
+		}
+
+		let target:cc.Node = other.node.parent.getChildByName("body");
+		target.getComponent("Character").onHurt(event);
+	}
+
+	onCollisionStay(other:cc.BoxCollider, self:cc.BoxCollider):void{
+		
+	}
+
+	onCollisionExit(other:cc.BoxCollider, self:cc.BoxCollider):void{
+		
 	}
 };
