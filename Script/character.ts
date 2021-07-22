@@ -26,8 +26,8 @@ export class Character extends cc.Component {
 		this.m_actVec["Hurt"]="Hurt";
 		this.m_actVec["Dead"]="Dead";
 
-		let hitBox:cc.Node = this.parent.hitBox.node;
-		let attBox:cc.Node = this.parent.attackBox.node;
+		let hitBox:cc.Node = this.parent.getChildByName("hitBox");
+		let attBox:cc.Node = this.parent.getChildByName("attBox");
 
 		this.m_hitBox = hitBox?.getComponents(cc.BoxCollider);
 		this.m_attBox = attBox?.getComponents(cc.BoxCollider);
@@ -35,6 +35,10 @@ export class Character extends cc.Component {
 		this.m_animation = cc.getComponent(cc.Animation);
 
 		this.m_status = dF.CUSDefine.State.None;
+
+		this.m_AnimFinishedCB=this.m_AnimFinishedCB;
+
+		this.m_animation.on("finished",this.m_AnimFinishedCB,this);
 
 		this.onIdle();
 	}
@@ -45,6 +49,10 @@ export class Character extends cc.Component {
 		stat = this.StateTree();
 		this.UpdateMotion(stat);
 		this.m_animation.play(this.m_playAnime);
+	}
+
+	onDestroy():void{
+
 	}
 
 	@property({displayName:"BaseHeaNum"})
@@ -108,6 +116,8 @@ export class Character extends cc.Component {
 	// 输入按键
 	m_Inputkey:number[];
 
+	m_AnimFinishedCB:function(type:string,data:cc.AnimationState):void;
+
 	// 额外伤害 + (基础伤害+(等级*增值率))
 	getDamage():number{
 		return this.m_effsetAttNum + (this.m_baseAttNum + (this.m_Level*this.m_offsetAttNum));
@@ -123,6 +133,10 @@ export class Character extends cc.Component {
 
 	getSpeed():number{
 		return this.m_baseSepNum + this.m_offsetSepNum;
+	}
+
+	getJumpHeight():number{
+		return this.m_baseJumpHeight + this.m_offsetJumpHeight;
 	}
 
 	// 行为树
@@ -158,12 +172,6 @@ export class Character extends cc.Component {
 			case dF.CUSDefine.State.Attack:
 				this.onAttack();
 				break;
-			case dF.CUSDefine.State.Hurt:
-				this.onHurt();
-				break;
-			case dF.CUSDefine.State.Dead:
-				this.onDead();
-				break;
 			default:
 				break;
 		}
@@ -186,36 +194,61 @@ export class Character extends cc.Component {
 	}
 
 	public onIdle(change:boolean = false):boolean{
-		if(!this.onChangeStatus("Idle",change))
+		let action:string = this.m_actVec["Idle"];
+		if(!this.onChangeStatus(action,change))
 			return false;
 		
-		this.m_playAnime = this.m_actVec["Idle"];
+		this.m_playAnime = action;
 	}
 
 	public onMove(change:boolean = false):boolean{
+		let action:string = this.m_actVec["Idle"];
+		let speed = this.getSpeed() * this.m_direction.x;
+		let isjump:boolean = this.m_direction.y == 1 ? true:false;
+		let linear:cc.Vec2 = new cc.vec2(0,0);
 
-		return false;
+		if(!this.onChangeStatus(action,change)){
+			return false;
+		}
+		if(isjump && this.m_isJumped == false){
+			linear.y = this.getJumpHeight();
+		}
+		linear.x = speed;
+		this.m_rigidBody.linearVelocity = linear;
+		this.scaleX = this.m_direction.x;
+
+		if(this.m_isJumped){
+			return this.onJump();
+		}
+		
+		this.m_playAnime = action;
+		return true;
 	}
 
 	public onJump(change:boolean = false):boolean{
-
+		
 		return false;
 	}
 
 	public onAttack(change:boolean = false):boolean{
-		if(!this.m_canBeHurt)
-			return false;
 		return true;
 	}	
 
 	public onHurt(event:dF.CUSDefine.AttEvent,change:boolean = false):boolean{
-		if(!this.m_canBeHurt || !this.onChangeStatus("Hurt",change))
+		let action:string = this.m_actVec["Hurt"];
+		if(!this.m_canBeHurt || !this.onChangeStatus(action,change))
 			return false;
 
 		event.hitNode = this.node;
 		let GameInstn:gM.Global.GameRule = gM.Global.GameRule.getInstance();
 		GameInstn.nodeSTCallBack(event);
-		this.m_playAnime = this.m_actVec["Hurt"];
+		this.m_heaNum -= event.damage;
+
+		if(this.getHeath() <= 0){
+			return this.onDead();
+		}
+
+		this.m_playAnime = action;
 		return true;
 	}
 
@@ -238,21 +271,57 @@ export class Character extends cc.Component {
 		return true;
 	}
 
-	public AttBoxAniCallBack(id:number,x:number,y:number,w:number,h:number):void{
+	public onAttBoxAniCallBack(id:number,x:number,y:number,w:number,h:number):void{
+		if(id == -1){
+			this.m_attBox.forEach((box:cc.BoxCollider)=>{
+				let boffset:cc.Vec2 = cc.v2(x,y);
+				let bsize:cc.Size = cc.size(w,h);
+				this.box.offset = boffset;
+				this.box.size = bsize;
+			});
+			return;
+		}
+
 		let boffset:cc.Vec2 = cc.v2(x,y);
 		let bsize:cc.Size = cc.size(w,h);
 		this.m_attBox[id]?.offset = boffset;
 		this.m_attBox[id]?.size = bsize;
 	}
 
-	public ColiBoxAniCallBack(id:number,x:number,y:number,w:number,h:number):void{
+	public onColiBoxAniCallBack(id:number,x:number,y:number,w:number,h:number):void{
+		if(id == -1){
+			this.m_hitBox.forEach((box:cc.BoxCollider)=>{
+				let boffset:cc.Vec2 = cc.v2(x,y);
+				let bsize:cc.Size = cc.size(w,h);
+				this.box.offset = boffset;
+				this.box.size = bsize;
+			});
+			return;
+		}
+
 		let boffset:cc.Vec2 = cc.v2(x,y);
 		let bsize:cc.Size = cc.size(w,h);
 		this.m_hitBox[id]?.offset = boffset;
 		this.m_hitBox[id]?.size = bsize;
 	}
 
+	onAnimationFinished(type:string,data:cc.AnimationState){
+		switch(type){
+			case this.m_actVec["Attack"]:
+			case this.m_actVec["Hurt"]:
+				this.onIdle();
+				break;
+			case this.m_actVec["Dead"]:
+				this.destroy();
+				break;
+			default:
+				break;
+		}
+	}
+
 	onCollisionEnter(other:cc.BoxCollider, self:cc.BoxCollider):void{
+		if(!this.m_isAttack)
+			return;
 		let event:dF.CUSDefine.AttEvent = {
 			attNode:this.node,
 			hitNode:null,
