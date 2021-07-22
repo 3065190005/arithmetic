@@ -4,35 +4,43 @@ import dF = require("./TypeDefine");
 import gM = require("./GameManager");
 
 @ccclass
-export class Character extends cc.Component {
-	
-	onLoad():void{
-		cc.director.getPhysicsManager().enabled = true;
-		cc.director.getCollisionManager().enabled = true;
+export default class Character extends cc.Component {
+
+	onLoad():void {
+
+		this.m_actVec = new Map();
+		this.m_Inputkey = new Map();
 
 		this.m_isJumped = false;
 		this.m_isAttack = false;
 		this.m_canBeHurt = true;
 
-		this.m_direction = cc.vec2(0,0);
+		this.m_direction = cc.v2(0,0);
 
 		this.m_animeB = "null";
 		this.m_animeA = "Idle";
 		this.m_playAnime = "null";
 
-		this.m_actVec["Idle"]="Idle";
-		this.m_actVec["Move"]="Move";
-		this.m_actVec["Attack"]="Attack";
-		this.m_actVec["Hurt"]="Hurt";
-		this.m_actVec["Dead"]="Dead";
+		this.m_actVec.set("Idle","Idle");
+		this.m_actVec.set("Move","Move");
+		this.m_actVec.set("Attack","Attack");
+		this.m_actVec.set("Hurt","Hurt");
+		this.m_actVec.set("Dead","Dead");
 
-		let hitBox:cc.Node = this.parent.getChildByName("hitBox");
-		let attBox:cc.Node = this.parent.getChildByName("attBox");
+		this.m_Inputkey[cc.macro.KEY.a] = 0;
+		this.m_Inputkey[cc.macro.KEY.d] = 0;
+		this.m_Inputkey[cc.macro.KEY.w] = 0;
+		this.m_Inputkey[cc.macro.KEY.j] = 0;
+		this.m_Inputkey[cc.macro.KEY.e] = 0;
 
-		this.m_hitBox = hitBox?.getComponents(cc.BoxCollider);
-		this.m_attBox = attBox?.getComponents(cc.BoxCollider);
-		this.m_rigidBody = this.parent.getComponent(cc.RigidBody);
-		this.m_animation = cc.getComponent(cc.Animation);
+		let hitBox:cc.Node = this.node.parent.getChildByName("hitBox");
+		let attBox:cc.Node = this.node.parent.getChildByName("attBox");
+
+		this.m_hitBox = hitBox.getComponents(cc.BoxCollider);
+		this.m_attBox = attBox.getComponents(cc.BoxCollider);
+
+		this.m_rigidBody = this.node.parent.getComponent(cc.RigidBody);
+		this.m_animation = this.node.getComponent(cc.Animation);
 
 		this.m_status = dF.CUSDefine.State.None;
 
@@ -46,7 +54,11 @@ export class Character extends cc.Component {
 		let stat:dF.CUSDefine.State;
 		stat = this.StateTree();
 		this.UpdateMotion(stat);
-		this.m_animation.play(this.m_playAnime);
+
+		if(this.m_playAnime != this.m_animeA){
+			this.m_playAnime = this.m_animeA;
+			this.m_animation.play(this.m_playAnime);
+		}
 	}
 
 	onDestroy():void{
@@ -109,12 +121,12 @@ export class Character extends cc.Component {
 	m_attBox:cc.BoxCollider[];
 
 	// 行为动作
-	[m_actVec:string]:string;
+	m_actVec:Map<string,string>;
 
 	// 输入按键
-	m_Inputkey:number[];
+	m_Inputkey:Map<cc.macro.KEY,number>;
 
-	// 额外伤害 + (基础伤害+(等级*增值率))
+	// 总伤害 = 额外伤害 + (基础伤害+(等级*增值率))
 	getDamage():number{
 		return this.m_effsetAttNum + (this.m_baseAttNum + (this.m_Level*this.m_offsetAttNum));
 	}
@@ -143,7 +155,7 @@ export class Character extends cc.Component {
 		
 		if(this.m_isAttack){
 			stat = dF.CUSDefine.State.Attack;
-		}else if(this.m_direction != cc.vec2(0,0)){
+		}else if(!this.m_direction.equals(cc.v2(0,0))){
 			stat = dF.CUSDefine.State.Move;
 		}else{
 			stat = dF.CUSDefine.State.Idle;
@@ -175,12 +187,12 @@ export class Character extends cc.Component {
 
 	// 按键设置
 	public KeyPress():void{
-		let moveR:number = this.m_Inputkey[cc.marco.KEY.d];
-		let moveL:number = this.m_Inputkey[cc.marco.KEY.a];
-		let moveU:number = this.m_Inputkey[cc.marco.KEY.w];
-		let att:number = this.m_Inputkey[cc.marco.KEY.j];
+		let moveR:number = this.m_Inputkey[cc.macro.KEY.d];
+		let moveL:number = this.m_Inputkey[cc.macro.KEY.a];
+		let moveU:number = this.m_Inputkey[cc.macro.KEY.w];
+		let att:number = this.m_Inputkey[cc.macro.KEY.j];
 
-		this.m_direction = cc.vec(0,0);
+		this.m_direction = cc.v2(0,0);
 		if(moveR){this.m_direction.x++;}
 		if(moveL){this.m_direction.x--;}
 		if(moveU){this.m_direction.y = moveU;}
@@ -190,18 +202,16 @@ export class Character extends cc.Component {
 	}
 
 	public onIdle(change:boolean = false):boolean{
-		let action:string = this.m_actVec["Idle"];
+		let action:string = this.m_actVec.get("Idle");
 		if(!this.onChangeStatus(action,change))
 			return false;
-		
-		this.m_playAnime = action;
 	}
 
 	public onMove(change:boolean = false):boolean{
-		let action:string = this.m_actVec["Move"];
+		let action:string = this.m_actVec.get("Move");
 		let speed = this.getSpeed() * this.m_direction.x;
 		let isjump:boolean = this.m_direction.y == 1 ? true:false;
-		let linear:cc.Vec2 = new cc.vec2(0,0);
+		let linear:cc.Vec2 = cc.v2(0,0);
 		
 		if(!this.onChangeStatus(action,change)){
 			return false;
@@ -214,33 +224,31 @@ export class Character extends cc.Component {
 		linear.x = speed;
 
 		this.m_rigidBody.linearVelocity = linear;
-		this.scaleX = this.m_direction.x;
+		this.node.scaleX = this.m_direction.x;
 
 		if(this.m_isJumped){
 			return this.onJump();
 		}
 		
-		this.m_playAnime = action;
 		return true;
 	}
 
 	public onJump(change:boolean = false):boolean{
-		this.m_playAnime = action;
+		let action:string = this.m_actVec.get("Move");
 		return true;
 	}
 
 	public onAttack(change:boolean = false):boolean{
-		let action:string = this.m_actVec["Attack"];
+		let action:string = this.m_actVec.get("Attack");
 		if(!this.onChangeStatus(action,change)){
 			return false;
 		}
 
-		this.m_playAnime = action;
 		return true;
 	}	
 
 	public onHurt(event:dF.CUSDefine.AttEvent,change:boolean = false):boolean{
-		let action:string = this.m_actVec["Hurt"];
+		let action:string = this.m_actVec.get("Hurt");
 		if(!this.m_canBeHurt || !this.onChangeStatus(action,change))
 			return false;
 
@@ -253,76 +261,97 @@ export class Character extends cc.Component {
 			return this.onDead();
 		}
 
-		this.m_playAnime = action;
 		return true;
 	}
 
 	public onDead(change:boolean = false):boolean{
-		let action:string = this.m_actVec["Dead"];
+		let action:string = this.m_actVec.get("Dead");
 		if(!this.onChangeStatus(action,change)){
 			return false;
 		}
 
-		this.m_playAnime = action;
 		return true;
 	}
 
+	// 玩家状态改变
 	private onChangeStatus(action:string,change:Boolean):boolean{
 		if(action == "null"){
 			return false;
 		}
 
-		if(this.m_animeA == this.m_animeB && change == false){
+		if(this.m_animeA == action && change == false){
 			return false;
 		}
 
 		this.m_animeB = this.m_animeA;
 		this.m_animeA = action;
-		this.m_status = dF.CUSDefine.StatusVec[this.m_animeA];
+		this.m_status = dF.CUSDefine.StatusVec.get(this.m_animeA);
 		return true;
 	}
 
+
+	// 物理框帧事件
+	public onPhyBoxAniCallBack(id:number,x:number,y:number,w:number,h:number):void{
+		if(id == -1){
+			this.m_attBox.forEach((box:cc.BoxCollider)=>{
+				let boffset:cc.Vec2 = cc.v2(x,y);
+				let bsize:cc.Size = cc.size(w,h);
+				box.offset = boffset;
+				box.size = bsize;
+			});
+			return;
+		}
+
+		let boffset:cc.Vec2 = cc.v2(x,y);
+		let bsize:cc.Size = cc.size(w,h);
+		this.m_attBox[id].offset = boffset;
+		this.m_attBox[id].size = bsize;
+	}
+
+	// 攻击框帧事件
 	public onAttBoxAniCallBack(id:number,x:number,y:number,w:number,h:number):void{
 		if(id == -1){
 			this.m_attBox.forEach((box:cc.BoxCollider)=>{
 				let boffset:cc.Vec2 = cc.v2(x,y);
 				let bsize:cc.Size = cc.size(w,h);
-				this.box.offset = boffset;
-				this.box.size = bsize;
+				box.offset = boffset;
+				box.size = bsize;
 			});
 			return;
 		}
 
 		let boffset:cc.Vec2 = cc.v2(x,y);
 		let bsize:cc.Size = cc.size(w,h);
-		this.m_attBox[id]?.offset = boffset;
-		this.m_attBox[id]?.size = bsize;
+		this.m_attBox[id].offset = boffset;
+		this.m_attBox[id].size = bsize;
 	}
 
+	// 受击框帧事件
 	public onColiBoxAniCallBack(id:number,x:number,y:number,w:number,h:number):void{
 		if(id == -1){
 			this.m_hitBox.forEach((box:cc.BoxCollider)=>{
 				let boffset:cc.Vec2 = cc.v2(x,y);
 				let bsize:cc.Size = cc.size(w,h);
-				this.box.offset = boffset;
-				this.box.size = bsize;
+				box.offset = boffset;
+				box.size = bsize;
 			});
 			return;
 		}
 
 		let boffset:cc.Vec2 = cc.v2(x,y);
 		let bsize:cc.Size = cc.size(w,h);
-		this.m_hitBox[id]?.offset = boffset;
-		this.m_hitBox[id]?.size = bsize;
+		this.m_hitBox[id].offset = boffset;
+		this.m_hitBox[id].size = bsize;
 	}
 
+	// 动画结束回调
 	onAnimationFinished(type:string,data:cc.AnimationState){
 		switch(type){
-			case this.m_actVec["Attack"]:
-			case this.m_actVec["Hurt"]:
+			case this.m_actVec.get("Attack"):
+			case this.m_actVec.get("Hurt"):
 				this.onIdle();
 				break;
-			case this.m_actVec["Dead"]:
+			case this.m_actVec.get("Dead"):
 				this.destroy();
 				break;
 			default:
@@ -330,19 +359,25 @@ export class Character extends cc.Component {
 		}
 	}
 
+	// 碰撞组件3函数
 	onCollisionEnter(other:cc.BoxCollider, self:cc.BoxCollider):void{
-		if(!this.m_isAttack)
-			return;
-		let event:dF.CUSDefine.AttEvent = {
-			attNode:this.node,
-			hitNode:null,
-			damage:this.getDamage(),
-			hitback:cc.vec2(0,0),
-			hitLev:this.m_hitLevel
-		};
+		// 0 - 9 受击 | 10 - x 攻击
+		if(self.tag > 9){
 
-		let target:cc.Node = other.node.parent.getChildByName("body");
-		target.getComponent("Character").onHurt(event);
+			if(!this.m_isAttack)
+				return;
+
+			let event:dF.CUSDefine.AttEvent = {
+				attNode:this.node,
+				hitNode:null,
+				damage:this.getDamage(),
+				hitback:cc.v2(0,0),
+				hitLev:this.m_hitLevel
+			};
+
+			let target:cc.Node = other.node.parent.getChildByName("body");
+			target.getComponent("Character").onHurt(event);
+		}
 	}
 
 	onCollisionStay(other:cc.BoxCollider, self:cc.BoxCollider):void{
@@ -352,4 +387,4 @@ export class Character extends cc.Component {
 	onCollisionExit(other:cc.BoxCollider, self:cc.BoxCollider):void{
 		
 	}
-};
+}
