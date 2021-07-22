@@ -36,9 +36,7 @@ export class Character extends cc.Component {
 
 		this.m_status = dF.CUSDefine.State.None;
 
-		this.m_AnimFinishedCB=this.m_AnimFinishedCB;
-
-		this.m_animation.on("finished",this.m_AnimFinishedCB,this);
+		this.m_animation.on("finished",this.onAnimationFinished,this);
 
 		this.onIdle();
 	}
@@ -52,7 +50,7 @@ export class Character extends cc.Component {
 	}
 
 	onDestroy():void{
-
+		this.m_animation.off("finished",this.onAnimationFinished,this);
 	}
 
 	@property({displayName:"BaseHeaNum"})
@@ -115,8 +113,6 @@ export class Character extends cc.Component {
 
 	// 输入按键
 	m_Inputkey:number[];
-
-	m_AnimFinishedCB:function(type:string,data:cc.AnimationState):void;
 
 	// 额外伤害 + (基础伤害+(等级*增值率))
 	getDamage():number{
@@ -262,7 +258,13 @@ export class Character extends cc.Component {
 	}
 
 	public onDead(change:boolean = false):boolean{
-		return false;
+		let action:string = this.m_actVec["Dead"];
+		if(!this.onChangeStatus(action,change)){
+			return false;
+		}
+
+		this.m_playAnime = action;
+		return true;
 	}
 
 	private onChangeStatus(action:string,change:Boolean):boolean{
