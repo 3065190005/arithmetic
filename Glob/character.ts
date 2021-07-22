@@ -202,18 +202,21 @@ export class Character extends cc.Component {
 	}
 
 	public onMove(change:boolean = false):boolean{
-		let action:string = this.m_actVec["Idle"];
+		let action:string = this.m_actVec["Move"];
 		let speed = this.getSpeed() * this.m_direction.x;
 		let isjump:boolean = this.m_direction.y == 1 ? true:false;
 		let linear:cc.Vec2 = new cc.vec2(0,0);
-
+		
 		if(!this.onChangeStatus(action,change)){
 			return false;
 		}
+
+		linear.y = 0;
 		if(isjump && this.m_isJumped == false){
 			linear.y = this.getJumpHeight();
 		}
 		linear.x = speed;
+
 		this.m_rigidBody.linearVelocity = linear;
 		this.scaleX = this.m_direction.x;
 
@@ -226,11 +229,17 @@ export class Character extends cc.Component {
 	}
 
 	public onJump(change:boolean = false):boolean{
-		
-		return false;
+		this.m_playAnime = action;
+		return true;
 	}
 
 	public onAttack(change:boolean = false):boolean{
+		let action:string = this.m_actVec["Attack"];
+		if(!this.onChangeStatus(action,change)){
+			return false;
+		}
+
+		this.m_playAnime = action;
 		return true;
 	}	
 
