@@ -47,7 +47,7 @@ export default class PlayerEvent extends cc.Component {
 	}
 
 	SkillTree(key:cc.macro.KEY):void{
-
+		
 	}
 
 }
