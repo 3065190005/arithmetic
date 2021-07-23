@@ -8,6 +8,14 @@ export namespace CUSDefine {
 		Dead,
 	};
 
+	export enum AiType{
+		None,
+		Normal,
+		KeeyAway,
+		AlwaysAtt,
+		FastRound,
+	}
+
 	export interface AttEvent{
 		attNode:any,
 		hitNode:any,

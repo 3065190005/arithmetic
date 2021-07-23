@@ -30,6 +30,10 @@ export namespace Global {
 			
 		}
 
+		public random(lower:number, upper:number):number {
+			return Math.random()*(upper-lower)+lower;
+		}
+
 		set setPlayerName(_name:string)
 			{this.m_playerName = _name;}
 
