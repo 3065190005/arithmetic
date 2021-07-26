@@ -1,3 +1,5 @@
+// Ai类
+
 const {ccclass, property} = cc._decorator;
 
 import Character from "./character";
@@ -12,15 +14,16 @@ export default class AiMotion extends cc.Component {
 	@property({displayName:"bodyName"})
 	bodyName:string = "character";
 
-	@property({displayName:"viewValue"})
+	// 带攻击的敌人最大视野值
+	@property({displayName:"EnemyMaxView"})
 	viewVal:number = 0;
 
 	private Target:Character;
 
 	private body:Character;
 	
-	@property({type:cc.Enum(tD.CUSDefine.AiType),displayName:"type"})
-	AiType:tD.CUSDefine.AiType;
+	@property({ type:cc.Enum(tD.CUSDefine.AiType) })
+	AiType:tD.CUSDefine.AiType = tD.CUSDefine.AiType.None;
 
 	start():void{
 		this.body = this.node.getComponent(this.bodyName);
@@ -36,39 +39,13 @@ export default class AiMotion extends cc.Component {
 		};
 	}
 
-	refAdder(dt:number):boolean{
-		let ret = 0;
-		switch(this.AiType){
-			case tD.CUSDefine.AiType.Normal:
-				ret = 20;
-				break;
-			case tD.CUSDefine.AiType.KeeyAway:
-				ret = 3;
-				break;
-			case tD.CUSDefine.AiType.AlwaysAtt:
-				ret = 6;
-				break;
-			case tD.CUSDefine.AiType.FastRound:
-				ret = 2;
-				break;
-			deafult:
-				return false;
-		}
-
-		if(this.ref >= ret){
-			this.ref = 0;
-			return true;
-		}
-
-		this.ref += dt;
-		return false;
-	}
-
-
 	normal(dt:number):void{
-		if(!this.refAdder(dt)){
+		if(this.ref < 0.5){
+			this.ref+=dt;
 			return;
 		}
+
+		this.ref = 0;
 
 		let GameRule:gM.Global.GameRule = gM.Global.GameRule.getInstance();
 		this.body.m_Inputkey[cc.macro.KEY.a] = 0;

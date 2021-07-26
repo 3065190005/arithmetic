@@ -1,3 +1,5 @@
+// 游戏全局类
+
 import dF = require("./TypeDefine"); 
 
 export namespace Global {
@@ -21,9 +23,22 @@ export namespace Global {
 			let playerData:string;
 			// playerData read
 
+			playerData = cc.sys.localStorage.getItem("data");
+			if(playerData == null){
+				this.createNewData();
+				playerData = cc.sys.localStorage.getItem("data");
+			}
 			let data:ConfigManager = new ConfigManager(playerData);
 			let table:ConfigTable = data.getTable("Character");
 			this.m_playerLevel = table.getColumn("level").asNumber();
+		}
+
+		public createNewData():void{
+			cc.sys.localStorage.removeItem("data");
+			let data:string;
+			data = "[Character]\n";
+			data += "level=1\n";
+			cc.sys.localStorage.setItem("data",data);
 		}
 
 		public nodeSTCallBack(event:dF.CUSDefine.AttEvent){
@@ -53,7 +68,7 @@ export namespace Global {
 
 	export class ConfigColumn{
 		constructor(str:string){
-			this.m_regTest = new RegExp(/(^\s[a-zA-Z_][a-zA-Z0-9_]*\s*)=(.+)/m);
+			this.m_regTest = new RegExp(/(^\s?[a-zA-Z_][a-zA-Z0-9_]*\s*)=(.+)/m);
 			let value = this.m_regTest.exec(str);
 			this.m_name = value[1];
 			this.m_value = value[2];
@@ -135,9 +150,9 @@ export namespace Global {
 			{return this.m_tabname;}
 		
 
-		private m_regTest:RegExp = new RegExp(/(^\s[a-zA-Z_][a-zA-Z0-9_]*\s*)=(.+)/m);
+		private m_regTest:RegExp = new RegExp(/(^\s?[a-zA-Z_][a-zA-Z0-9_]*\s*)=(.+)/m);
 		private m_tabname:string;
-		private m_tableList:Map<string,ConfigColumn>;
+		private m_tableList:Map<string,ConfigColumn> = new Map();
 	};
 
 	interface tabStruct{
@@ -186,28 +201,32 @@ export namespace Global {
 			let brk:boolean = true;
 			for(let i:number = 0 ;brk;i++){
 				let tabText:string;
-				brk = (offsetVec[i++].name == "End");
+				brk = (offsetVec[i+1].name == "End");
 				if(brk){
 					tabText = file.substr(offsetVec[i].length);	
 				}else{
-					tabText = file.substr(offsetVec[i++].length,offsetVec[i].length);
+					tabText = file.substr(offsetVec[i+1].length,offsetVec[i].length);
 				}
 				
 				let tabClas:ConfigTable = new ConfigTable(tabText);
 				tabClas.setTabName = offsetVec[i].name;
 
 				this.m_file.set(offsetVec[i].name,tabClas);
+				brk = !brk;
 			}
 		}
 
 		getTable(tableName:string):ConfigTable {
-			if(this.m_file.get(tableName) != null){
-				return this.m_file.get(tableName);
+			tableName = `[${tableName}]`;
+			let tab : ConfigTable;
+			tab = this.m_file.get(tableName);
+			if(tab != undefined){
+				return tab;
 			}
-			return null;
+			return undefined;
 		}
 
 		private m_reg:RegExp;
-		private m_file:Map<string,ConfigTable>;
+		private m_file:Map<string,ConfigTable> = new Map();
 	};
 };

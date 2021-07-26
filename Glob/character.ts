@@ -1,17 +1,48 @@
+// 人物类
+
 const {ccclass, property} = cc._decorator;
 
 import dF = require("./TypeDefine"); 
 import gM = require("./GameManager");
+import GameWorld from './GameWorld';
+import PhyBoxTarget from './PhyBoxTarget';
 
 @ccclass
 export default class Character extends cc.Component {
 
+	@property({displayName:"调试-位置信息",type:cc.Boolean})
+	private md_nodePosDebug:boolean = true;
+
+	@property({displayName:"调试-物理起始结束",type:cc.Boolean})
+	private md_phyPosDebug:boolean = true;
+
+	// 单体初始化（可重写
+	initChar():void{
+		this.m_chartype = dF.CUSDefine.CharacterType.Enemy;
+		let Game:GameWorld = cc.find("Canvas/Game").getComponent("GameWorld");
+		Game?.EnemyVec.push(this.node);
+	}
+
+	// 单体销毁（可重写
+	uniniChar():void{
+		let Game:GameWorld = cc.find("Canvas/Game").getComponent("GameWorld");
+		let index:number = 0;
+		for(let i in Game.EnemyVec){
+			if(Game.EnemyVec[i] == this.node){
+				Game.EnemyVec.splice(index,1);
+				return;
+			}
+			index ++;
+		}
+	}
+
+	// 初始变量通用全局
 	onLoad():void {
 
 		this.m_actVec = new Map();
 		this.m_Inputkey = new Map();
 
-		this.m_isJumped = false;
+		this.m_isJumped = 0;
 		this.m_isAttack = false;
 		this.m_canBeHurt = true;
 
@@ -40,51 +71,88 @@ export default class Character extends cc.Component {
 		this.m_attBox = attBox.getComponents(cc.BoxCollider);
 
 		this.m_rigidBody = this.node.parent.getComponent(cc.RigidBody);
+		this.m_phyBox = this.node.parent.getComponents(cc.PhysicsBoxCollider);
 		this.m_animation = this.node.getComponent(cc.Animation);
 
 		this.m_status = dF.CUSDefine.State.None;
+		this.m_chartype = dF.CUSDefine.CharacterType.None;
 
 		this.m_animation.on("finished",this.onAnimationFinished,this);
-
-		this.onIdle();
 	}
 
+	// 初始化状态通用全局
+	start():void{
+		this.initChar();
+		this.onIdle(true);
+
+		
+	}
+
+	// 帧更新
 	update(dt:number):void{
 		this.KeyPress();
 		let stat:dF.CUSDefine.State;
 		stat = this.StateTree();
 		this.UpdateMotion(stat);
 
-		if(this.m_playAnime != this.m_animeA){
-			this.m_playAnime = this.m_animeA;
-			this.m_animation.play(this.m_playAnime);
+		this.AirUpdate(8);
+
+		if(this.md_nodePosDebug){
+			console.info(`PosX:${this.node.parent.position.x} , PosY:${this.node.parent.position.y}`);
 		}
 	}
 
-	onDestroy():void{
-		this.m_animation.off("finished",this.onAnimationFinished,this);
+	// 跳跃更新 0不跳跃,1上升,2中间停留,3下落,4末尾
+	AirUpdate(stop:number):void{
+		let target :number = this.m_rigidBody.linearVelocity.y;
+		if(this.m_isJumped != 0){
+			if(target > stop && this.m_isJumped != 4){
+				if(this.m_isJumped == 3){
+					this.m_isJumped = 4;
+				}else{
+					this.m_isJumped = 1;
+				}
+			}
+			else if(target < -stop && this.m_isJumped != 4){
+				this.m_isJumped = 3;
+			}
+			else if(Math.abs(target) <= stop && this.m_isJumped != 4){
+				this.m_isJumped = 2;	
+			}
+			else if(target == 0 && this.m_isJumped == 4){
+				this.m_isJumped = 0;
+			}
+		}
 	}
 
-	@property({displayName:"BaseHeaNum"})
+	// 销毁通用
+	onDestroy():void{
+		this.m_animation.off("finished",this.onAnimationFinished,this);
+		this.uniniChar();
+
+		this.node.parent.destroy();
+	}
+
+	@property({displayName:"基础血量"})
 	m_baseHeaNum:number = 5;		// 基础血量
-	m_effsetHeaNum:number = 0;		// 增值率
-	m_offsetHeaNum:number = 1;		// 额外血量
+	m_effsetHeaNum:number = 0;		// 额外血量
+	m_offsetHeaNum:number = 1;		// 每级增值率
 	m_heaNum:number = 5;			// 当前血量
 
-	@property({displayName:"BaseAttNum"})
+	@property({displayName:"基础攻击力"})
 	m_baseAttNum:number = 1;
 	m_effsetAttNum:number = 0;
 	m_offsetAttNum:number = 1;
 
-	@property({displayName:"BaseSepNum"})
-	m_baseSepNum:number = 50;
+	@property({displayName:"基础速度"})
+	m_baseSepNum:number = 30;
 	m_offsetSepNum:number = 1;
 
-	@property({displayName:"BaseJumpNum"})
-	m_baseJumpHeight:number = 15;
-	m_offsetJumpHeight:number = 0;
+	@property({displayName:"基础跳跃高度"})
+	m_baseJumpHeight:number = 170;
+	m_offsetJumpHeight:number = 0.1;
 
-	@property({displayName:"CharaterLevel"})
+	@property({displayName:"角色等级"})
 	m_Level:number = 1;
 
 	// 位置方向
@@ -93,8 +161,8 @@ export default class Character extends cc.Component {
 	// 是否按下攻击
 	m_isAttack:boolean;
 
-	// 是否正在跳跃
-	m_isJumped:boolean;
+	// 跳跃状态 0不跳 1 起跳 2中间 3 结尾
+	m_isJumped:number;
 
 	// 是否可以收到伤害
 	m_canBeHurt:boolean;
@@ -120,11 +188,20 @@ export default class Character extends cc.Component {
 	m_hitBox:cc.BoxCollider[];
 	m_attBox:cc.BoxCollider[];
 
+	// 物理组件
+	m_phyBox:cc.PhysicsBoxCollider[];
+
 	// 行为动作
 	m_actVec:Map<string,string>;
 
 	// 输入按键
 	m_Inputkey:Map<cc.macro.KEY,number>;
+
+	// 人物类型
+	m_chartype:dF.CUSDefine.CharacterType;
+
+	// 物理引擎Scale防止
+	m_RealTarget:number = 0;
 
 	// 总伤害 = 额外伤害 + (基础伤害+(等级*增值率))
 	getDamage():number{
@@ -153,16 +230,16 @@ export default class Character extends cc.Component {
 
 		stat = dF.CUSDefine.State.None;
 		
+		if(this.m_status == dF.CUSDefine.State.Hurt || this.m_status == dF.CUSDefine.State.Dead){
+			return dF.CUSDefine.State.None
+		}
+
 		if(this.m_isAttack){
 			stat = dF.CUSDefine.State.Attack;
 		}else if(!this.m_direction.equals(cc.v2(0,0))){
 			stat = dF.CUSDefine.State.Move;
 		}else{
 			stat = dF.CUSDefine.State.Idle;
-		}
-
-		if(stat <= this.m_status){
-			return dF.CUSDefine.State.None;
 		}
 
 		return stat;
@@ -201,56 +278,100 @@ export default class Character extends cc.Component {
 		else {this.m_isAttack = false;}
 	}
 
+	// 站立
 	public onIdle(change:boolean = false):boolean{
 		let action:string = this.m_actVec.get("Idle");
-		if(!this.onChangeStatus(action,change))
-			return false;
+		
+		if(change == false){
+			if(this.m_status > dF.CUSDefine.State.Move){
+				return false;
+			}
+			if(this.m_status == dF.CUSDefine.State.None){
+				return false;
+			}
+		}
+
+		this.onChangeStatus(action,change);
+		return true;
 	}
 
+	// 移动
 	public onMove(change:boolean = false):boolean{
 		let action:string = this.m_actVec.get("Move");
 		let speed = this.getSpeed() * this.m_direction.x;
 		let isjump:boolean = this.m_direction.y == 1 ? true:false;
-		let linear:cc.Vec2 = cc.v2(0,0);
+		let linear:cc.Vec2 = new cc.Vec2();
 		
-		if(!this.onChangeStatus(action,change)){
-			return false;
+
+		if(change == false){
+			if(this.m_status > dF.CUSDefine.State.Move){
+				return false;
+			}
+
+			if(this.m_status == dF.CUSDefine.State.None){
+				return false;
+			}
 		}
 
-		linear.y = 0;
-		if(isjump && this.m_isJumped == false){
-			linear.y = this.getJumpHeight();
+		linear = this.m_rigidBody.linearVelocity;
+
+		if(this.m_isJumped == 0){
+			if(isjump){
+				linear.y = this.getJumpHeight();
+				this.m_isJumped = 1;
+			}
+			linear.x = speed;
 		}
-		linear.x = speed;
 
 		this.m_rigidBody.linearVelocity = linear;
-		this.node.scaleX = this.m_direction.x;
 
-		if(this.m_isJumped){
+		if(this.m_isJumped != 0){
 			return this.onJump();
 		}
-		
+
+		this.node.parent.scaleX = this.m_direction.x * Math.abs(this.node.parent.scaleX);
+		this.onChangeStatus(action,change);
 		return true;
 	}
 
+	// 跳远（移动附属
 	public onJump(change:boolean = false):boolean{
 		let action:string = this.m_actVec.get("Move");
+		this.onChangeStatus(action,change);
 		return true;
 	}
 
+	// 攻击
 	public onAttack(change:boolean = false):boolean{
 		let action:string = this.m_actVec.get("Attack");
-		if(!this.onChangeStatus(action,change)){
-			return false;
+		if(change == false){
+			if(this.m_status >= dF.CUSDefine.State.Attack){
+				return false;
+			}
+
+			if(this.m_status == dF.CUSDefine.State.None){
+				return false;
+			}
 		}
 
+
+		this.m_isAttack = true;
+		this.onChangeStatus(action,change);
 		return true;
 	}	
 
+	// 受伤
 	public onHurt(event:dF.CUSDefine.AttEvent,change:boolean = false):boolean{
 		let action:string = this.m_actVec.get("Hurt");
-		if(!this.m_canBeHurt || !this.onChangeStatus(action,change))
-			return false;
+		if(change == false){
+			if(this.m_canBeHurt == false){
+				return false;
+			}
+
+			if(this.m_status > dF.CUSDefine.State.Hurt){
+				return false;
+			}
+		}
 
 		event.hitNode = this.node;
 		let GameInstn:gM.Global.GameRule = gM.Global.GameRule.getInstance();
@@ -261,15 +382,16 @@ export default class Character extends cc.Component {
 			return this.onDead();
 		}
 
+		this.onChangeStatus(action,change);
 		return true;
 	}
 
+	// 死亡
 	public onDead(change:boolean = false):boolean{
 		let action:string = this.m_actVec.get("Dead");
-		if(!this.onChangeStatus(action,change)){
-			return false;
-		}
+		this.m_canBeHurt = false;
 
+		this.onChangeStatus(action,change);
 		return true;
 	}
 
@@ -286,6 +408,11 @@ export default class Character extends cc.Component {
 		this.m_animeB = this.m_animeA;
 		this.m_animeA = action;
 		this.m_status = dF.CUSDefine.StatusVec.get(this.m_animeA);
+
+		if(this.m_playAnime != this.m_animeA){
+			this.m_playAnime = this.m_animeA;
+			this.m_animation.play(this.m_playAnime);
+		}
 		return true;
 	}
 
@@ -293,19 +420,25 @@ export default class Character extends cc.Component {
 	// 物理框帧事件
 	public onPhyBoxAniCallBack(id:number,x:number,y:number,w:number,h:number):void{
 		if(id == -1){
-			this.m_attBox.forEach((box:cc.BoxCollider)=>{
+			this.m_phyBox.forEach((box:cc.PhysicsBoxCollider)=>{
 				let boffset:cc.Vec2 = cc.v2(x,y);
 				let bsize:cc.Size = cc.size(w,h);
+
 				box.offset = boffset;
 				box.size = bsize;
+
+				box.apply();
 			});
 			return;
 		}
 
 		let boffset:cc.Vec2 = cc.v2(x,y);
 		let bsize:cc.Size = cc.size(w,h);
-		this.m_attBox[id].offset = boffset;
-		this.m_attBox[id].size = bsize;
+
+		this.m_phyBox[id].offset = boffset;
+		this.m_phyBox[id].size = bsize;
+
+		this.m_phyBox[id].apply();
 	}
 
 	// 攻击框帧事件
@@ -346,9 +479,11 @@ export default class Character extends cc.Component {
 
 	// 动画结束回调
 	onAnimationFinished(type:string,data:cc.AnimationState){
-		switch(type){
+		switch(this.m_playAnime){
 			case this.m_actVec.get("Attack"):
+				this.m_isAttack = false;
 			case this.m_actVec.get("Hurt"):
+				this.m_status = dF.CUSDefine.State.Idle;
 				this.onIdle();
 				break;
 			case this.m_actVec.get("Dead"):
@@ -362,7 +497,7 @@ export default class Character extends cc.Component {
 	// 碰撞组件3函数
 	onCollisionEnter(other:cc.BoxCollider, self:cc.BoxCollider):void{
 		// 0 - 9 受击 | 10 - x 攻击
-		if(self.tag > 9){
+		if(self.tag > 9 || other.tag <= 9){
 
 			if(!this.m_isAttack)
 				return;
@@ -376,7 +511,7 @@ export default class Character extends cc.Component {
 			};
 
 			let target:cc.Node = other.node.parent.getChildByName("body");
-			target.getComponent("Character").onHurt(event);
+			target.getComponent((<PhyBoxTarget>target.parent.getComponent("PhyBoxTarget")).ComName).onHurt(event);
 		}
 	}
 
@@ -387,4 +522,22 @@ export default class Character extends cc.Component {
 	onCollisionExit(other:cc.BoxCollider, self:cc.BoxCollider):void{
 		
 	}
-}
+
+	// 物理4组件 1 = 身体 2 = 跳跃检测
+	onBeginContact(contact:cc.PhysicsContact,selfCollider:cc.PhysicsCollider,otherConllider:cc.PhysicsCollider):void{
+		
+		//只在两个碰撞体开始接触时调用一次
+    }
+
+	onPreSolve(contact:cc.PhysicsContact,selfCollider:cc.PhysicsCollider,otherConllider:cc.PhysicsCollider):void{
+        //每次将要处理碰撞体接触逻辑时被调用
+    }
+
+	onPostSolve(contact:cc.PhysicsContact,selfCollider:cc.PhysicsCollider,otherConllider:cc.PhysicsCollider):void{
+        //每次处理完碰撞体接触逻辑时被调用
+    }
+
+	onEndContact(contact:cc.PhysicsContact,selfCollider:cc.PhysicsCollider,otherConllider:cc.PhysicsCollider):void{
+
+	}
+};

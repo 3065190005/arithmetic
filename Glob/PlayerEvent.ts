@@ -1,3 +1,5 @@
+// 玩家控制类
+
 const {ccclass, property} = cc._decorator;
 
 import Character from "./character";
@@ -7,7 +9,7 @@ export default class PlayerEvent extends cc.Component {
 
 	targetBool:boolean = true;
 
-	@property({displayName:"bodyName"});
+	@property({displayName:"bodyName"})
 	bodyName:string="character";
 
 	private body:Character;
@@ -24,7 +26,7 @@ export default class PlayerEvent extends cc.Component {
 		cc.systemEvent.off(cc.SystemEvent.EventType.KEY_UP,this.onKeyUp,this);
 	}
 
-	update(dt:number):{
+	update(dt:number):void{
 
 	}
 

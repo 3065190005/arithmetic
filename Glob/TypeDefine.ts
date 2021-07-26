@@ -1,3 +1,5 @@
+// 类型定义类
+
 export namespace CUSDefine {
 	export enum State{
 		None,
@@ -17,11 +19,19 @@ export namespace CUSDefine {
 	}
 
 	export interface AttEvent{
-		attNode:any,
-		hitNode:any,
-		damage:number,
-		hitback:any,
-		hitLev:number
+		attNode:any,		// 攻击者(node)
+		hitNode:any,		// 受害者(node)
+		damage:number,		// 攻击值(number)
+		hitback:any,		// 击退值(vec2)
+		hitLev:number		// 打击感等级(影响顿帧和抖屏)
+	};
+
+	export enum CharacterType{
+		None,
+		Player,
+		Boss,
+		Enemy,
+		Teammate
 	};
 
 	export let StatusVec:Map<string,State> = new Map([
