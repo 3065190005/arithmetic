@@ -58,6 +58,10 @@ export default class Character extends cc.Component {
 		this.m_actVec.set("Hurt","Hurt");
 		this.m_actVec.set("Dead","Dead");
 
+		this.m_actVec.set("JumpUp","Move");
+		this.m_actVec.set("JumpSt","Move");
+		this.m_actVec.set("JumpDn","Move");
+
 		this.m_Inputkey[cc.macro.KEY.a] = 0;
 		this.m_Inputkey[cc.macro.KEY.d] = 0;
 		this.m_Inputkey[cc.macro.KEY.w] = 0;
@@ -122,6 +126,9 @@ export default class Character extends cc.Component {
 			else if(target == 0 && this.m_isJumped == 4){
 				this.m_isJumped = 0;
 			}
+		}else if(this.m_isJumped == 0 && target < -stop){
+			this.m_isJumped = 3;
+			this.onIdle();
 		}
 	}
 
@@ -183,6 +190,9 @@ export default class Character extends cc.Component {
 
 	// 动画组件
 	m_animation:cc.Animation;
+
+	// 当前动画状态
+	m_animaState:cc.AnimationState;
 
 	// 碰撞体组件
 	m_hitBox:cc.BoxCollider[];
@@ -291,6 +301,10 @@ export default class Character extends cc.Component {
 			}
 		}
 
+		if(this.m_isJumped != 0){
+			return this.onJump();
+		}
+
 		this.onChangeStatus(action,change);
 		return true;
 	}
@@ -329,14 +343,32 @@ export default class Character extends cc.Component {
 			return this.onJump();
 		}
 
-		this.node.parent.scaleX = this.m_direction.x * Math.abs(this.node.parent.scaleX);
+		let beforScaleX:number = this.node.parent.scaleX;
+		let afterScaleX:number = this.m_direction.x * Math.abs(this.node.parent.scaleX);
+
+		if(beforScaleX != afterScaleX){
+			this.node.parent.scaleX = this.m_direction.x * Math.abs(this.node.parent.scaleX);
+		}
+
 		this.onChangeStatus(action,change);
 		return true;
 	}
 
 	// 跳远（移动附属
 	public onJump(change:boolean = false):boolean{
-		let action:string = this.m_actVec.get("Move");
+		let action:string;
+		switch (this.m_isJumped){
+			case 1: action = this.m_actVec.get("JumpUp");
+			break;
+			case 2: action = this.m_actVec.get("JumpSt");
+			break;
+			case 4:
+			case 3: action = this.m_actVec.get("JumpDn");
+			break;
+			default:
+			break;
+		}
+
 		this.onChangeStatus(action,change);
 		return true;
 	}
@@ -375,7 +407,6 @@ export default class Character extends cc.Component {
 
 		event.hitNode = this.node;
 		let GameInstn:gM.Global.GameRule = gM.Global.GameRule.getInstance();
-		GameInstn.nodeSTCallBack(event);
 		this.m_heaNum -= event.damage;
 
 		if(this.getHeath() <= 0){
@@ -411,9 +442,16 @@ export default class Character extends cc.Component {
 
 		if(this.m_playAnime != this.m_animeA){
 			this.m_playAnime = this.m_animeA;
-			this.m_animation.play(this.m_playAnime);
+			this.m_animaState = this.m_animation.play(this.m_playAnime);
+			this.m_animaState.speed(1);
 		}
+		
 		return true;
+	}
+
+	// 打击感
+	public hitSTEvent():boolean{
+		
 	}
 
 
@@ -498,7 +536,6 @@ export default class Character extends cc.Component {
 	onCollisionEnter(other:cc.BoxCollider, self:cc.BoxCollider):void{
 		// 0 - 9 受击 | 10 - x 攻击
 		if(self.tag > 9 || other.tag <= 9){
-
 			if(!this.m_isAttack)
 				return;
 
@@ -510,8 +547,13 @@ export default class Character extends cc.Component {
 				hitLev:this.m_hitLevel
 			};
 
+			let ishurt:boolean;
 			let target:cc.Node = other.node.parent.getChildByName("body");
-			target.getComponent((<PhyBoxTarget>target.parent.getComponent("PhyBoxTarget")).ComName).onHurt(event);
+			ishurt = target.getComponent((<PhyBoxTarget>target.parent.getComponent("PhyBoxTarget")).ComName).onHurt(event);
+			if(ishurt){
+				let GR = gM.Global.GameRule.getInstance();
+				GR.nodeSTCallBack(event);
+			}
 		}
 	}
 
