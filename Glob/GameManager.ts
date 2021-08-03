@@ -8,6 +8,7 @@ export namespace Global {
 	export class GameRule{
 		private constructor(){
 			this.initOnFile();
+			this.m_frame = 60;
 		}
 
 		private static m_Instance : GameRule = null!;
@@ -19,6 +20,7 @@ export namespace Global {
 			return this.m_Instance;
 		}
 
+		// 初始化读取存档
 		public initOnFile():void{
 			let playerData:string;
 			// playerData read
@@ -33,6 +35,7 @@ export namespace Global {
 			this.m_playerLevel = table.getColumn("level").asNumber();
 		}
 
+		// 创建新存档
 		public createNewData():void{
 			cc.sys.localStorage.removeItem("data");
 			let data:string;
@@ -41,14 +44,17 @@ export namespace Global {
 			cc.sys.localStorage.setItem("data",data);
 		}
 
+		// 玩家命中打击感回调
 		public nodeSTCallBack(event:dF.CUSDefine.AttEvent){
 			
 		}
 
+		// 随机值
 		public random(lower:number, upper:number):number {
 			return Math.random()*(upper-lower)+lower;
 		}
 
+		// 各种属性
 		set setPlayerName(_name:string)
 			{this.m_playerName = _name;}
 
@@ -66,6 +72,7 @@ export namespace Global {
 		private m_frame:number;			// 游戏帧率
 	};
 
+	// 数据值
 	export class ConfigColumn{
 		constructor(str:string){
 			this.m_regTest = new RegExp(/(^\s?[a-zA-Z_][a-zA-Z0-9_]*\s*)=(.+)/m);
@@ -119,6 +126,7 @@ export namespace Global {
 		private m_value:string;
 	}
 
+	// 数据表
 	export class ConfigTable{
 		constructor(file:string){
 			file = file.replace('\r','\n');
@@ -160,6 +168,7 @@ export namespace Global {
 		length:number
 	}
 
+	// 数据文件
 	export class ConfigManager{
 		constructor(file:string){
 			// read all file
