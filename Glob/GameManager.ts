@@ -178,7 +178,7 @@ export namespace Global {
 		getTablesFromFile(file:string):void{
 			this.m_file.clear();
 
-			let spe:RegExp = new RegExp(/\/\/(.+?)/g);
+			let spe:RegExp = new RegExp(/\;(.+?)/g);
 			file = file.replace(spe, '\n');
 			this.m_reg = new RegExp(/([\n|\r]|^)\[(.+?)\]/g);
 
